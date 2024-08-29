@@ -1,3 +1,3 @@
-# Let me know if something doesnt work my discord is @yjg
+# discord is @yjg for help
 
 * Also please credit thank you
