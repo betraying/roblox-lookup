@@ -1,3 +1,1 @@
-# discord is @yjg for help
-
-* Also please credit thank you
+dm me on discord for help @yjg
