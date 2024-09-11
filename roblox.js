@@ -3,21 +3,21 @@ client.on('interactionCreate', async interaction => {
     try {
         if (!interaction.isCommand()) return;
 
-        const { commandName, user } = interaction; // Fetch user who executed the command
+        const { commandName, user } = interaction;
 
         if (commandName === 'roblox' || commandName === 'r') {
-            const username = interaction.options.getString('username');
+            const identifier = interaction.options.getString('identifier');
 
-            // Fetch the Roblox profile
-            const profile = await fetchRobloxProfile(username);
+            // Fetch the Roblox profile based on username or ID
+            const profile = await fetchRobloxProfile(identifier);
             if (!profile) {
-                await interaction.reply({ content: `No Roblox Profile has been associated with: ${username}` });
+                await interaction.reply({ content: `No Roblox Profile has been found for: ${identifier}` });
                 return;
             }
 
             // Create embed
             const embed = new EmbedBuilder()
-                .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() }) // Show user's username and profile picture
+                .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() })
                 .setTitle(`${profile.name}`)
                 .setURL(`https://www.roblox.com/users/${profile.id}/profile`)
                 .setThumbnail(profile.avatar)
@@ -28,7 +28,7 @@ client.on('interactionCreate', async interaction => {
                     { name: 'Followers', value: profile.followers.toString(), inline: false },
                     { name: 'Following', value: profile.following.toString(), inline: false }
                 )
-                .setTimestamp(new Date());
+                .setFooter({ text: 'made by @betraying'});
 
             await interaction.reply({ embeds: [embed] });
         }
@@ -41,27 +41,26 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
     if (message.content.startsWith(',roblox') || message.content.startsWith(',r')) {
         const args = message.content.split(' ');
-        const username = args.slice(1).join(' ');
+        const identifier = args.slice(1).join(' ');
 
-        if (!username) {
+        if (!identifier) {
             const embed = new EmbedBuilder()
-                .setTitle('Please Provide a Roblox Username')
-                .setColor('#FFFFFF'); // Color for the embed
+                .setTitle('Please Provide a Roblox Username or ID')
+                .setColor('#FFFFFF');
 
             await message.channel.send({ embeds: [embed] });
             return;
         }
 
-        // Fetch the Roblox profile
-        const profile = await fetchRobloxProfile(username);
+        const profile = await fetchRobloxProfile(identifier);
         if (!profile) {
-            await message.channel.send(`No Roblox profile has been found for: ${username}`);
+            await message.channel.send(`No Roblox profile has been found for: ${identifier}`);
             return;
         }
 
         // Create embed
         const embed = new EmbedBuilder()
-            .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() }) // Show user's username and profile picture
+            .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
             .setTitle(`${profile.name}`)
             .setURL(`https://www.roblox.com/users/${profile.id}/profile`)
             .setThumbnail(profile.avatar)
@@ -72,34 +71,39 @@ client.on('messageCreate', async message => {
                 { name: '**Followers**', value: profile.followers.toString(), inline: false },
                 { name: '**Following**', value: profile.following.toString(), inline: false }
             )
-            .setTimestamp(new Date());
+            .setFooter({ text: 'made by @betraying'});
 
         await message.channel.send({ embeds: [embed] });
     }
 });
 
-// Function to fetch Roblox profile
-async function fetchRobloxProfile(username) {
+async function fetchRobloxProfile(identifier) {
     try {
-        const response = await fetch(`https://users.roblox.com/v1/usernames/users`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ usernames: [username] })
-        });
+        let userId;
 
-        if (!response.ok) {
-            throw new Error(`Error fetching user ID for ${username}: ${response.status} ${response.statusText}`);
+        if (isNaN(identifier)) {
+            const response = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ usernames: [identifier] })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error fetching user ID for ${identifier}: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.data || data.data.length === 0) {
+                throw new Error(`No Roblox profile found for username: ${identifier}`);
+            }
+
+            userId = data.data[0].id; 
+        } else {
+            userId = identifier;
         }
-
-        const data = await response.json();
-
-        if (!data.data || data.data.length === 0) {
-            throw new Error(`No Roblox profile found for username: ${username}`);
-        }
-
-        const userId = data.data[0].id;
 
         const profileResponse = await fetch(`https://users.roblox.com/v1/users/${userId}`);
         if (!profileResponse.ok) {
@@ -140,7 +144,6 @@ async function fetchRobloxProfile(username) {
         const lastOnline = presenceData.userPresences[0]?.lastOnline || 'N/A';
         const status = presenceData.userPresences[0]?.userPresenceType === 0 ? 'Offline' : 'Online';
 
-        // Convert to UNIX
         const createdTimestamp = Math.floor(new Date(profileData.created).getTime() / 1000);
         const lastOnlineTimestamp = Math.floor(new Date(lastOnline).getTime() / 1000);
 
@@ -157,7 +160,6 @@ async function fetchRobloxProfile(username) {
             status: status
         };
     } catch (error) {
-        // Silently handle the error without logging it
-        return null; // Return null or appropriate default value when there's an error
+        return null;
     }
 }
