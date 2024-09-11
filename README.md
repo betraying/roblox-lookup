@@ -1,1 +1,1 @@
-dm me on discord for help @yjg
+## dm me on discord for help @yjg
